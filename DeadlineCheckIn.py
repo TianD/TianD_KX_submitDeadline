@@ -393,42 +393,10 @@ class DeadlineCheckIn(QMainWindow):
         return
 
     def MyCMD_submit(self):
-        user = str(self.win.QC_LE_User.text())
-        password = str(self.win.QC_LE_Password.text())
-        jobName = str(self.win.QC_LE_JobName.text())
-        serverIP = str(self.win.QC_CBB_ServerIP.currentText())
-        pool = str(self.win.QC_CBB_Pool.currentText())
-        sf = str(int(self.win.QC_LE_Sf.text()))
-        ef = str(int(self.win.QC_LE_Ef.text()))
-        packetSize = str(int(self.win.QC_SPB_Packet.text()))
-        project = str(self.win.QC_LB_ProjectFolder.text())
-        mayaFilePath = str(self.win.QC_LB_MayaFilePath.text())
-        outputFolder = str(self.win.QC_LE_OutputFolder.text())
-        TD_add = ''
-        MrTool = self.Mrtool
-        cmd = '"%s" -b -s "%s" -u %s -p "%s" -e 79 -add "%s" -n %s -f "%s" -proj "%s"                 -sf %s -ef %s -bf 1 -se %s -st 1 -pk %s -pr 50 -pool "%s" -max 10 -dest "%s" -info "USER: %s TIME: %s "' % (MrTool,
-         serverIP,
-         user,
-         password,
-         TD_add,
-         jobName,
-         mayaFilePath,
-         project,
-         sf,
-         ef,
-         sf,
-         packetSize,
-         pool,
-         outputFolder,
-         self._USER,
-         str(time.strftime('%Y-%m-%d %H:%M:%S')))
-        print cmd
-        self.CMD = cmd
-        process = subprocess.Popen(cmd, shell=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        process.wait()
-        info = '\n'.join(process.stdout.readlines())
-        QMessageBox.information(None, u'注意', info)
-        return
+        # 提交到deadline
+        # 从面板获取数据, 构造job_info.job 和  plug_info.job
+        pass
+        
 
 
 class MyModel(QAbstractListModel):

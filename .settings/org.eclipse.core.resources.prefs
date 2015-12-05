@@ -1,2 +1,4 @@
 eclipse.preferences.version=1
 encoding/DeadlineCheckIn.py=gbk
+encoding/DeadlineJobFile.py=utf-8
+encoding/test_deadline_python_api.py=utf-8
