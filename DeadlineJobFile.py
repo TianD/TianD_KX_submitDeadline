@@ -24,7 +24,7 @@ class JobInfo(object):
             file = file
         else :
             file = self.file
-        with codecs.open(file, 'w', encoding='utf-16') as f:
+        with codecs.open(file, 'w', encoding= 'utf-16') as f:
             for k, v in zip(key, value):
                 text = '{key}={value}\r\n'.format(key = k, value = v)
                 f.writelines(text)
@@ -36,7 +36,8 @@ class JobInfo(object):
             file = file
         else :
             file = self.file
-        result = self.read()
+        result = self.read(file = file)
+
         allK = [r[0] for r in result]
         num = len(result)
         for k, v in zip(key, value):
@@ -46,7 +47,7 @@ class JobInfo(object):
             else :
                 result.append([k, v, num])
                 num += 1
-        
+
         return self.create(key = [r[0] for r in result], value = [r[1] for r in result])
            
     def read(self, key = None, file = None):
@@ -56,7 +57,7 @@ class JobInfo(object):
             file = self.file
         result = []
         lineNUM = 0
-        with codecs.open(file, 'r', encoding='utf-16') as f:
+        with codecs.open(file, 'r', encoding= 'utf-16') as f:
             for l in f.readlines():
                 currentK, currentV = self.parse(l)
                 if key and currentK not in key:
@@ -70,8 +71,12 @@ class JobInfo(object):
     def parse(self, text):
         splitLabel = '='
         match = re.match('(?P<key>\w*){0}(?P<value>[\w\W]*)\r'.format(splitLabel), text)
-        key = match.group('key')
-        value = match.group('value')
+        if match:
+            key = match.group('key')
+            value = match.group('value')
+        else :
+            key = None
+            value = None
         return key, value
         
     def delete(self, file = None):
@@ -82,7 +87,10 @@ class JobInfo(object):
         pass
 
 if __name__ == "__main__":
-    file = "C:\\Users\\huiguoyu\\AppData\\Local\\Thinkbox\\Deadline7\\temp\\maya_plugin_info.job"
+    defaultFile = "Z:\\Resouce\\Support\\KX\\maya2014\\modules\\TianD_KX_TOOL\\scripts\\MayaSubmit2Deadline\\default_maya_job_info.job"
+    file = "E:\\testjobfile.job"
     jobinfo = JobInfo(file)
-    jobinfo.write(key = ['Name'], value = ['aaa'])
+    jobinfoLst = jobinfo.read(file = defaultFile)
+    jobinfo.create(key = [i[0] for i in jobinfoLst], value = [i[1] for i in jobinfoLst])
+    jobinfo.write(key = ['Name', 'Priority', 'Frames', 'OutputDirectory0'], value = ["a", 100, "1-10", "e:/"])
             

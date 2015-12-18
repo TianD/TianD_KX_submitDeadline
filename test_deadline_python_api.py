@@ -9,15 +9,20 @@ Created on 2015年12月5日 上午11:41:54
 @Q    Q: 298081132
 '''
 
-# import fileinput
-# 
-# for line in fileinput.input("C:\\Users\\huiguoyu\\Desktop\\test.txt", inplace=True):
-#     print line.replace("2014", "2013")
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
+    
 
+tree = ET.ElementTree(file = "E:\\maya\\SENBA\\106\\004\\cache\\nCache\\fluid\\SB_106_004_004_ef_c001\\fluidShape1.xml")
 
-import codecs
+type = list(tree.iter('cacheType'))[0].attrib['Format']
 
-file = "C:\\Users\\huiguoyu\\AppData\\Local\\Thinkbox\\Deadline7\\temp\\maya_job_info.job"
-with codecs.open(file, 'r', encoding='utf-16') as f:
-    for l in f.readlines():
-        print l
+time = list(tree.iter('time'))[0].attrib['Range']
+
+perFrame = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
+
+startFrame, endFrame = time.split('-')
+
+print type, time, perFrame

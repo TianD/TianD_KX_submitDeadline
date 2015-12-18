@@ -16,15 +16,25 @@ isp.main()
 
 """
 import os, sys, socket, shutil, getpass, time
+import xml.etree.cElementTree as ET
 import subprocess
 import json
 import SearchImageSequence as sis
 reload(sis)
 from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide.QtCore import *   
 import sip
 #import maya.cmds as cmds
 import pymel.core as pm
+
+deadlinePath = "//KX-REN04/DeadlineRepository7/submission/Maya/Main"
+
+deadlinePath in sys.path or sys.path.append(deadlinePath)
+
+import MayaJigsaw
+
+import DeadlineJobFile as job
+
 parentWindow = None
 
 def getMayaWindow():
@@ -83,6 +93,10 @@ class DeadlineCheckIn(QMainWindow):
     if UserOrHost == 'host':
         Project_Name = _HOST
     CMD = ''
+    #JobTempPath = os.path.expanduser('~/AppData/Local/Thinkbox/Deadline7/temp')
+    JobTempPath = 'e:/'
+    DefaultJobInfo = os.path.join(Folder, 'default_maya_job_info.job')
+    DefaultPluginInfo = os.path.join(Folder, 'default_maya_plugin_info.job')
 
     def __init__(self, parent = parentWindow):
         """
@@ -112,11 +126,11 @@ class DeadlineCheckIn(QMainWindow):
         self.win.QC_BT_Submit.clicked.connect(self.MyCMD_submit)
         self.win.QC_MU_Help.triggered.connect(self.help)
 
-    	self.win.QC_CKB_DisplayAllCache.clicked.connect(self.INIT_CacheListView)
-    	self.win.QC_BT_UpdateCache.clicked.connect(self.INIT_CacheListView)
-    	self.win.QC_LV_CacheList.clicked.connect(self.MyCMD_selectCache)
-    	self.win.QC_BT_CheckInCache_Selected.clicked.connect(self.MyCMD_checkCache_selected)
-    	self.win.QC_BT_CheckInCache_All.clicked.connect(self.MyCMD_checkCache_all)	
+        self.win.QC_CKB_DisplayAllCache.clicked.connect(self.INIT_CacheListView)
+        self.win.QC_BT_UpdateCache.clicked.connect(self.INIT_CacheListView)
+        self.win.QC_LV_CacheList.clicked.connect(self.MyCMD_selectCache)
+        self.win.QC_BT_CheckInCache_Selected.clicked.connect(self.MyCMD_checkCache_selected)
+        self.win.QC_BT_CheckInCache_All.clicked.connect(self.MyCMD_checkCache_all)	
 
     def INIT_UI(self):
         self.Project_Path = os.path.join(self.NetRenderRoot, self.Project_Name)
@@ -172,14 +186,17 @@ class DeadlineCheckIn(QMainWindow):
         scenes = os.path.join(project, 'scenes')
         sourceimages = os.path.join(project, 'sourceimages')
         alembics = os.path.join(project, 'cache/alembic')
+        caches = os.path.join(project, 'cache/nCache/{0}'.format(pm.Env().sceneName().namebase))
         data = os.path.join(project, 'data')
         particles = os.path.join(project, 'particles')
         images = os.path.join(project, 'images')
         self.sourceimages = sourceimages
         self.alembics = alembics
+        self.caches = caches
         self.images = images
         folders = [project,
 	     alembics,
+         caches,
          scenes,
          sourceimages,
          data,
@@ -233,7 +250,7 @@ class DeadlineCheckIn(QMainWindow):
             if onlinePath:
                 try:
                     #cmds.setAttr(fileName + '.fileTextureName', onlinePath, type='string')
-		            pm.PyNode(fileName).fileTextureName.set(onlinePath)
+                    pm.PyNode(fileName).fileTextureName.set(onlinePath)
                 except:
                     pass
                 
@@ -247,13 +264,17 @@ class DeadlineCheckIn(QMainWindow):
 
         for s in selected:
             fileName, cache_group = s
-            onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.alembics)
+            if pm.PyNode(fileName).type() == "cacheFile":
+                onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.caches)
+            elif pm.PyNode(fileName).type() == "AlembicNode":
+                onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.alembics)
+            else :
+                onlinePath = ''
             if onlinePath:
-                try:
-                    #cmds.setAttr(fileName + '.fileTextureName', onlinePath, type='string')
-		            pm.PyNode(fileName).abc_File.set(onlinePath)
-                except:
-                    pass
+                if pm.PyNode(fileName).type() == "AlembicNode":
+                    pm.PyNode(fileName).abc_File.set(onlinePath)
+                elif pm.PyNode(fileName).type() == "cacheFile":
+                    pm.PyNode(fileName).cachePath.set(os.path.dirname(onlinePath))
                 
         QMessageBox.information(self.win, u'提示', u'上传缓存完成\n')
         self.INIT_CacheListView()
@@ -269,13 +290,13 @@ class DeadlineCheckIn(QMainWindow):
             if onlinePath:
                 try:
                     #cmds.setAttr(fileName + '.fileTextureName', onlinePath, type='string')
-		            pm.PyNode(fileName).fileTextureName.set(onlinePath)
+                    pm.PyNode(fileName).fileTextureName.set(onlinePath)
                 except:
                     pass
         
         QMessageBox.information(self.win, u'提示', u'上传贴图完成\n')
         self.INIT_ListView()
-	
+
     def MyCMD_checkCache_all(self):
         selected = []
         for s in self.cachemodel._datas:
@@ -283,13 +304,17 @@ class DeadlineCheckIn(QMainWindow):
 
         for s in selected:
             fileName, cache_group = s
-            onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.alembics)
+            if pm.PyNode(fileName).type() == "cacheFile":
+                onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.caches)
+            elif pm.PyNode(fileName).type() == "AlembicNode":
+                onlinePath = self.MyCMD_checkCache_cmd(cache_group, self.alembics)
+            else :  
+                onlinePath = ''
             if onlinePath:
-                try:
-                    #cmds.setAttr(fileName + '.fileTextureName', onlinePath, type='string')
-		            pm.PyNode(fileName).abc_File.set(onlinePath)
-                except:
-                    pass
+                if pm.PyNode(fileName).type() == "AlembicNode":
+                    pm.PyNode(fileName).abc_File.set(onlinePath)
+                elif pm.PyNode(fileName).type() == "cacheFile":
+                    pm.PyNode(fileName).cachePath.set(os.path.dirname(onlinePath))
         
         QMessageBox.information(self.win, u'提示', u'上传缓存完成\n')
         self.INIT_CacheListView()
@@ -301,7 +326,7 @@ class DeadlineCheckIn(QMainWindow):
 
         if len(selected):
             #cmds.select(selected)
-	        pm.select(selected)
+            pm.select(selected)
 
     def MyCMD_selectCache(self, QModelIndex):
         selected = []
@@ -310,24 +335,30 @@ class DeadlineCheckIn(QMainWindow):
 
         if len(selected):
             #cmds.select(selected)
-	        pm.select(selected)
+            pm.select(selected)
 
     def INIT_ListView(self):
+        sf = int(pm.PyNode('defaultRenderGlobals.fs').get())
+        ef = int(pm.PyNode('defaultRenderGlobals.ef').get())
         textures = []
         #files = cmds.ls(type='file')
         files = pm.ls(type='file')
         for f in files:
             #image = cmds.getAttr(f + '.fileTextureName')
-            image = pm.PyNode(f + '.fileTextureName').get()
+            image = f.fileTextureName.get()
             #if not cmds.getAttr(f + '.useFrameExtension'):
-            if not pm.PyNode(f + '.useFrameExtension').get():
-                textures.append([f, [image]])
+            if not f.useFrameExtension.get():
+                textures.append([f.name(), [image]])
             else:
-                tmp = [f, []]
+                offset = f.frameOffset.get()
+                tmp = [f.name(), []]
                 for a in sis.Get(image).rv:
                     tmp[1].append(a)
-
-                textures.append(tmp)
+                if len(tmp[1]) > offset:
+                    temp = [tmp[0], tmp[1][(offset):(offset + ef - sf + 1)]]
+                else :
+                    temp = tmp
+                textures.append(temp)
 
         self.tablemodel = MyModel(textures)
         self.win.QC_LV_TextureList.setModel(self.tablemodel)
@@ -339,7 +370,7 @@ class DeadlineCheckIn(QMainWindow):
         else:
             for i in self.tablemodel.hideGroup:
                 self.win.QC_LV_TextureList.setRowHidden(i, 1)
-		
+
     def INIT_CacheListView(self):
         caches = []
         nodes = pm.ls(type='AlembicNode')
@@ -347,6 +378,23 @@ class DeadlineCheckIn(QMainWindow):
             abc = n.abc_File.get()
             caches.append([n.name(), [abc]])
         
+        cacheFile = pm.ls(type = 'cacheFile')
+        for c in cacheFile: 
+            cachePath = c.cachePath.get()
+            cacheName = c.cacheName.get()
+            xml = os.path.join(cachePath, "{name}.xml".format(name = cacheName))
+            tree = ET.ElementTree(file = xml)
+            type = list(tree.iter('cacheType'))[0].attrib['Format']
+            perF = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
+            timeRange = list(tree.iter('time'))[0].attrib['Range']
+            perFrame = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
+            startFrame, endFrame = timeRange.split('-')
+            files = [xml]
+            for i in range(int(startFrame)/int(perFrame), int(endFrame)/int(perFrame)+1):
+                cacheFile = os.path.join(cachePath, "{name}Frame{num}.{exr}".format(name = cacheName, num = i, exr = type))
+                files.append(cacheFile)
+            caches.append([c.name(), files])
+            
         self.cachemodel = MyCacheModel(caches)
         self.win.QC_LV_CacheList.setModel(self.cachemodel)
         showAllBox = self.win.QC_CKB_DisplayAllCache.isChecked()
@@ -360,7 +408,7 @@ class DeadlineCheckIn(QMainWindow):
 
     def MyCMD_checkFile(self):
         saveMode = self.win.QC_CBB_SaveMode.currentIndex()
-        #currentFile = cmds.file(q=1, sn=1)
+        #currentFile = cmds.file(q=1, sn=1)  
         currentFile = "%s" %pm.Env().sceneName()
         projectFolder = str(self.win.QC_LB_ProjectFolder.text())
         mayaFileName = str(self.win.QC_LB_MayaFileName.text())
@@ -395,9 +443,36 @@ class DeadlineCheckIn(QMainWindow):
     def MyCMD_submit(self):
         # 提交到deadline
         # 从面板获取数据, 构造job_info.job 和  plug_info.job
-        pass
+        jobName = self.win.QC_LE_JobName.text()
+        outputDir = self.win.QC_LE_OutputFolder.text()
+        sceneFile = self.win.QC_LB_MayaFilePath.text()
+        projectPath = self.win.QC_LB_ProjectFolder.text()
+        outputFilePath = self.win.QC_LE_OutputFolder.text()
+        renderer = self.win.QC_CBB_Renderer.currentText()
+        priority = self.win.QC_SPB_Priority.value()
+        build = self.win.QC_CBB_Build.currentText()
+        version = self.win.QC_CBB_Version.currentText()
+        startFrame = self.win.QC_LE_Sf.text()
+        endFrame = self.win.QC_LE_Ef.text()
+        frames = "{start}-{end}".format(start=startFrame, end=endFrame)
+        if startFrame == endFrame: 
+            frames = startFrame
+            
+        jobFile = os.path.join(self.JobTempPath, 'maya_job_info.job')
+        jobinfo = job.JobInfo(jobFile)
+        jobinfoLst = jobinfo.read(file = self.DefaultJobInfo)
+        jobinfo.create(key = [i[0] for i in jobinfoLst], value = [i[1] for i in jobinfoLst])
+        jobinfo.write(key = ['Name', 'Priority', 'Frames', 'OutputDirectory0'], value = [jobName, priority, frames, outputDir])
         
-
+        pluginFile = os.path.join(self.JobTempPath, 'maya_plugin_info.job')
+        pluginfo = job.JobInfo(pluginFile)
+        pluginfoLst = pluginfo.read(file = self.DefaultPluginInfo)
+        pluginfo.create(key = [i[0] for i in pluginfoLst], value = [i[1] for i in pluginfoLst])
+        pluginfo.write(key = ['SceneFile', 'Version', 'Build', 'ProjectPath', 'Renderer', 'OutputFilePath'], value = [sceneFile, version, build, projectPath, renderer, outputFilePath])
+        
+        output = MayaJigsaw.CallDeadlineCommand([jobFile, pluginFile], True)
+        return output
+    
 
 class MyModel(QAbstractListModel):
 
@@ -435,6 +510,7 @@ class MyCacheModel(QAbstractListModel):
     def __init__(self, datas = []):
         super(MyCacheModel, self).__init__()
         self._datas = datas
+        print self._datas
         self.hideGroup = self.My_SetHideGroup()
 
     def My_SetHideGroup(self):
@@ -448,12 +524,14 @@ class MyCacheModel(QAbstractListModel):
     def data(self, index, role = Qt.DisplayRole):
         __row = index.row()
         __fileName = self._datas[__row][0]
-        __imagePath = self._datas[__row][1]
+        __cachePath = self._datas[__row][1]
         if role == Qt.ForegroundRole:
             if __row not in self.hideGroup:
                 return QBrush(Qt.red)
         elif role == Qt.DisplayRole:
-            Display = __imagePath
+            Display = __cachePath[0]
+            if len(__cachePath) > 1:
+                Display += ' ( --sequence : %i images )' % len(__cachePath)
             return Display
 
     def rowCount(self, parent):
