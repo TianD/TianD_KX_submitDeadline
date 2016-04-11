@@ -383,17 +383,18 @@ class DeadlineCheckIn(QMainWindow):
             cachePath = c.cachePath.get()
             cacheName = c.cacheName.get()
             xml = os.path.join(cachePath, "{name}.xml".format(name = cacheName))
-            tree = ET.ElementTree(file = xml)
-            type = list(tree.iter('cacheType'))[0].attrib['Format']
-            perF = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
-            timeRange = list(tree.iter('time'))[0].attrib['Range']
-            perFrame = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
-            startFrame, endFrame = timeRange.split('-')
-            files = [xml]
-            for i in range(int(startFrame)/int(perFrame), int(endFrame)/int(perFrame)+1):
-                cacheFile = os.path.join(cachePath, "{name}Frame{num}.{exr}".format(name = cacheName, num = i, exr = type))
-                files.append(cacheFile)
-            caches.append([c.name(), files])
+            if os.path.exists(xml):
+                tree = ET.ElementTree(file = xml)
+                type = list(tree.iter('cacheType'))[0].attrib['Format']
+                perF = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
+                timeRange = list(tree.iter('time'))[0].attrib['Range']
+                perFrame = list(tree.iter('cacheTimePerFrame'))[0].attrib['TimePerFrame']
+                startFrame, endFrame = timeRange.split('-')
+                files = [xml]
+                for i in range(int(startFrame)/int(perFrame), int(endFrame)/int(perFrame)+1):
+                    cacheFile = os.path.join(cachePath, "{name}Frame{num}.{exr}".format(name = cacheName, num = i, exr = type))
+                    files.append(cacheFile)
+                caches.append([c.name(), files])
             
         self.cachemodel = MyCacheModel(caches)
         self.win.QC_LV_CacheList.setModel(self.cachemodel)
